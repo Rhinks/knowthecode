@@ -1,0 +1,30 @@
+[
+  {
+    "path": "README.md",
+    "content": "# Mini Test Repo\n\nThis is a small repository created to test:\n- directory walking\n- tree-sitter parsing\n- chunking logic\n- metadata extraction\n\nLanguages included: Python, JavaScript, TypeScript, JSON, Java, Markdown.\n"
+  },
+  {
+    "path": "app.py",
+    "content": "import math\n\ndef add(a, b):\n    return a + b\n\nclass Calculator:\n    def multiply(self, x, y):\n        return x * y\n\nif __name__ == \"__main__\":\n    c = Calculator()\n    print(add(2, 3))\n    print(c.multiply(4, 5))\n"
+  },
+  {
+    "path": "utils.js",
+    "content": "export function greet(name) {\n    return `Hello, ${name}!`;\n}\n\nexport const PI = 3.14159;\n\nclass Helper {\n    static square(n) {\n        return n * n;\n    }\n}\n"
+  },
+  {
+    "path": "script.ts",
+    "content": "type User = {\n  id: number;\n  username: string;\n};\n\nfunction getUser(id: number): User {\n  return {\n    id,\n    username: \"guest\"\n  };\n}\n\nconsole.log(getUser(1));\n"
+  },
+  {
+    "path": "Main.java",
+    "content": "public class Main {\n    public static void main(String[] args) {\n        int result = add(10, 20);\n        System.out.println(\"Result: \" + result);\n    }\n\n    public static int add(int a, int b) {\n        return a + b;\n    }\n}\n"
+  },
+  {
+    "path": "config.json",
+    "content": "{\n    \"version\": \"1.0.0\",\n    \"features\": {\n        \"enableLogging\": true,\n        \"maxThreads\": 4\n    }\n}\n"
+  },
+  {
+    "path": "notes.md",
+    "content": "# Internal Notes\n\n- This repo is intentionally tiny.\n- Every file is small so we can verify chunking boundaries.\n- Use it to test AST → chunk → embedding flow.\n"
+  }
+]
