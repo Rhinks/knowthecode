@@ -9,3 +9,8 @@
 #   1. retrieve(query, repo_id) -> chunks
 #   2. call LLM (Gemini) with query + chunks
 #   3. return answer to frontend
+
+
+
+#call the repo loader -> file reader -> chunker -> embbedder -> retriever
+
