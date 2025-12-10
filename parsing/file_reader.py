@@ -74,5 +74,5 @@ def save_files_to_json(files: list[dict], output_path: str) -> None:
 
     
 # Example usage:
-repo_data = read_repo_files("/home/rhinks/Desktop/projects/knowthecode/ingestion/cloned_repos/flask")
-save_files_to_json(repo_data, "output.json")
+# repo_data = read_repo_files("/home/rhinks/Desktop/projects/knowthecode/ingestion/cloned_repos/flask")
+# save_files_to_json(repo_data, "output.json")

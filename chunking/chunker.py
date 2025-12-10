@@ -374,6 +374,39 @@ def process_files(entries: List[Dict]) -> List[Dict]:
         out.extend(chs)
     return out
 
+def chunk_and_save(input_json_path: str, output_json_path: str = "result.json") -> List[Dict]:
+    """
+    Wrapper function for orchestrator.
+    Takes JSON file of parsed files, chunks them, saves to output_json_path, returns chunks.
+    
+    Args:
+        input_json_path: path to output.json from file_reader
+        output_json_path: path to save chunks (default: result.json)
+    
+    Returns:
+        list of chunks
+    """
+    print(f"[chunker] Loading files from {input_json_path}...")
+    try:
+        with open(input_json_path, 'r', encoding='utf8') as fh:
+            entries = json.load(fh)
+    except Exception as e:
+        print(f"[ERROR] Failed to load {input_json_path}: {e}")
+        return []
+    
+    print(f"[chunker] Processing {len(entries)} files...")
+    chunks = process_files(entries)
+    
+    print(f"[chunker] Saving {len(chunks)} chunks to {output_json_path}...")
+    try:
+        with open(output_json_path, 'w', encoding='utf8') as fh:
+            json.dump(chunks, fh, indent=2, ensure_ascii=False)
+        print(f"[chunker] ✓ Chunks saved to {output_json_path}")
+    except Exception as e:
+        print(f"[ERROR] Failed to save chunks: {e}")
+    
+    return chunks
+
 # -------- CLI usage --------
 def main():
     if len(sys.argv) < 2:

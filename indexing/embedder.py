@@ -49,13 +49,34 @@ except Exception as e:
 
 print("[DEBUG] ✓ embedder.py fully initialized\n")
 
+
+def namespace_exists(index_name: str, repo_id: str) -> bool:
+    """
+    Check if a namespace (repo_id) already exists in the index.
+    
+    Args:
+        index_name: Pinecone index name
+        repo_id: namespace to check
+    
+    Returns:
+        True if namespace exists, False otherwise
+    """
+    try:
+        index = pc.Index(index_name)
+        stats = index.describe_index_stats()
+        namespaces = stats.get('namespaces', {})
+        return repo_id in namespaces
+    except Exception as e:
+        print(f"[ERROR] Failed to check namespace: {e}")
+        return False
+
 def embed_chunks(chunks: list[dict], index_name: str = "code-chunks", repo_id: str = "default"):
     """
     Embed chunks using OpenAI and store in Pinecone.
     
     Args:
         chunks: list of dicts with keys: path, content, lang, start_line, end_line, id
-        index_name: Pinecone index name (creates if doesn't exist)
+        index_name: Pinecone index name (creates if doesn't `exist`)
         repo_id: identifier for the repo (for filtering)
     
     Returns:
@@ -204,6 +225,29 @@ def retrieve_chunks(query: str, index_name: str = "code-chunks", repo_id: str = 
         })
     
     return retrieved
+
+
+def namespace_exists(index_name: str, repo_id: str) -> bool:
+    """
+    Check if a namespace (repo_id) already exists in the Pinecone index.
+    
+    Args:
+        index_name: Pinecone index name
+        repo_id: namespace to check
+    
+    Returns:
+        True if namespace exists, False otherwise
+    """
+    try:
+        index = pc.Index(index_name)
+        stats = index.describe_index_stats()
+        namespaces = stats.get('namespaces', {})
+        exists = repo_id in namespaces
+        print(f"[namespace_exists] Checking '{repo_id}' in index '{index_name}': {exists}")
+        return exists
+    except Exception as e:
+        print(f"[ERROR] Failed to check namespace: {e}")
+        return False
 
 
 # ============================================================
