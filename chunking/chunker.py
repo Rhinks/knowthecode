@@ -34,7 +34,8 @@ EXT_LANG = {
     '.py': 'python', '.js': 'javascript', '.ts': 'typescript',
     '.java': 'java', '.go': 'go', '.rs': 'rust',
     '.c': 'c', '.cpp': 'cpp', '.md': 'markdown',
-    '.json': 'json', '.yml': 'yaml', '.yaml': 'yaml'
+    '.json': 'json', '.yml': 'yaml', '.yaml': 'yaml',
+    '.ipynb': 'ipynb'  # Jupyter notebooks
 }
 
 # -------- utilities --------

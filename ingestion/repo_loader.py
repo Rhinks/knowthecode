@@ -28,5 +28,5 @@ def ingest_repo(repo_url: str) -> Path:
     return repo_dir
 
 
-cloned_location = ingest_repo("https://github.com/forzzzzz/Calculator-You.git")
+cloned_location = ingest_repo("https://github.com/pallets/flask.git")
 print(cloned_location)
