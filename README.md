@@ -1,187 +1,121 @@
-# KnowTheCode - AI-Powered Repository Analysis
+# KnowTheCode
 
-An AI-powered code repository analysis tool that uses RAG (Retrieval-Augmented Generation) to answer questions about codebases.
+**AI-powered code repository analysis using RAG (Retrieval-Augmented Generation).**
 
-## 🚀 Quick Start
+Ask questions about any GitHub repository and get AI-generated answers based on the actual source code. Built with Python, FastAPI, OpenAI, and Pinecone.
+
+## How It Works
+
+1. **Ingest**: Clone a repository, parse files, and break code into semantic chunks using Tree-Sitter
+2. **Embed**: Generate vector embeddings for code chunks using OpenAI's API
+3. **Store**: Index embeddings in Pinecone for fast similarity search
+4. **Query**: Retrieve relevant code chunks and generate answers using GPT-4o-mini
+
+## Quick Start
 
 ### Prerequisites
 
-- Python 3.8 or higher
-- OpenAI API key
-- Pinecone API key
-- Git (for cloning repositories)
+- Python 3.8+
+- [OpenAI API key](https://platform.openai.com)
+- [Pinecone API key](https://www.pinecone.io)
 
-### Installation
-
-1. **Clone or navigate to the project directory:**
-
-   ```bash
-   cd knowthecode
-   ```
-
-2. **Create a virtual environment (recommended):**
-
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install dependencies:**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Set up environment variables:**
-
-   Create a `.env` file in the project root:
-
-   ```bash
-   touch .env
-   ```
-
-   Add your API keys:
-
-   ```env
-   OPENAI_API_KEY=your_openai_api_key_here
-   PINECONE_API_KEY=your_pinecone_api_key_here
-   ```
-
-### Running the Application
-
-1. **Start the FastAPI server:**
-
-   ```bash
-   python api.py
-   ```
-
-   Or using uvicorn directly:
-
-   ```bash
-   uvicorn api:app --host 0.0.0.0 --port 8000 --reload
-   ```
-
-   **Note:** When using `--reload`, exclude the cloned repos to avoid restart mid-ingestion:
-
-   ```bash
-   uvicorn api:app --host 0.0.0.0 --port 8000 --reload --reload-exclude ingestion/cloned_repos/**
-   ```
-
-2. **Open the frontend:**
-
-   Open `index.html` in your web browser, or serve it with a simple HTTP server:
-
-   ```bash
-   # Python 3
-   python -m http.server 8080
-
-   # Then open: http://localhost:8080/index.html
-   ```
-
-   Or simply double-click `index.html` to open it in your default browser.
-
-3. **Verify the API is running:**
-
-   Visit: http://localhost:8000/health
-
-   You should see: `{"status": "ok"}`
-
-## 📖 Usage
-
-1. **Ingest a Repository:**
-
-   - Enter a GitHub repository URL (e.g., `https://github.com/user/repo.git`)
-   - Click "Start Engine"
-   - Watch live progress as the backend streams cloning/parsing/chunking/embedding updates
-
-2. **Query the Repository:**
-   - After ingestion, the query section will appear
-   - Enter your question about the codebase
-   - Adjust the "Top K" slider to control how many chunks to retrieve (1-10)
-   - Click "Analyze & Generate"
-   - View the AI-generated answer
-
-## 🔧 Configuration
-
-### Pinecone Index
-
-The application uses a Pinecone index named `code-chunks`. If it doesn't exist, it will be automatically created with:
-
-- Dimension: 1536 (for OpenAI text-embedding-3-small)
-- Metric: cosine
-- Cloud: AWS (us-east-1)
-
-### Supported File Types
-
-- Code: `.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.java`, `.cpp`, `.c`, `.h`, `.go`, `.rs`, `.php`
-- Web: `.html`, `.css`, `.scss`
-- Data: `.json`, `.yaml`, `.yml`, `.xml`
-- Docs: `.md`, `.Rmd`, `.ipynb`
-
-### Ignored Directories
-
-The following directories are automatically skipped:
-
-- `.git`, `node_modules`, `dist`, `build`, `venv`, `env`, `__pycache__`, `.next`, `.vscode`, `vendor`, `.idea`
-
-## 🧪 Testing
-
-### Test the Chunker:
+### Setup
 
 ```bash
-python scripts/check.py
+# Clone and enter directory
+git clone <repo> && cd knowthecode
+
+# Create virtual environment
+python3 -m venv venv && source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create .env file with API keys
+echo "OPENAI_API_KEY=your_key_here" > .env
+echo "PINECONE_API_KEY=your_key_here" >> .env
 ```
 
-### Test Embedding (requires result.json):
+### Run
 
 ```bash
-python indexing/embedder.py
+python3 api.py
 ```
 
-### Test Full Pipeline:
+Open `http://localhost:8000` in your browser.
 
-```bash
-python orchestrator.py
+## Features
+
+- **Multi-language support**: Python, JavaScript, TypeScript, Java, Go, Rust, PHP, C/C++, HTML, CSS, and more
+- **Intelligent chunking**: Uses Tree-Sitter for language-aware code segmentation
+- **Vector search**: Fast semantic search via Pinecone
+- **Smart caching**: Detects already-indexed repositories and skips re-processing
+- **Clean UI**: Modern glass-morphism interface with real-time feedback
+
+## Architecture
+
+```
+┌─────────────────┐
+│  GitHub Repo    │
+└────────┬────────┘
+         │ git clone
+         ▼
+┌─────────────────┐
+│ Parse & Chunk   │ Tree-Sitter
+│ (orchestrator)  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Embed & Index   │ OpenAI + Pinecone
+│ (embedder)      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐      ┌──────────┐
+│   Pinecone      │◄─────┤   Query  │
+│  Vector DB      │      └──────────┘
+└─────────────────┘
+
+Query Flow:
+User Question → Embed → Search Pinecone → Retrieve Context → GPT-4o-mini → Answer
 ```
 
-## 📁 Project Structure
+## Tech Stack
 
-```
-knowthecode/
-├── api.py              # FastAPI REST API server
-├── orchestrator.py     # Main orchestration logic
-├── index.html          # Frontend UI
-├── requirements.txt    # Python dependencies
-├── ingestion/          # Repository cloning
-├── parsing/            # File reading & filtering
-├── chunking/           # Code chunking (Tree-Sitter)
-└── indexing/           # Embedding & Pinecone operations
-```
+- **Backend**: FastAPI, Python 3
+- **Parsing**: Tree-Sitter (code-aware chunking)
+- **Embeddings**: OpenAI text-embedding-3-small
+- **Vector DB**: Pinecone (serverless)
+- **LLM**: GPT-4o-mini
+- **Frontend**: Vanilla JS, CSS (glass-morphism design)
 
-## 🐛 Troubleshooting
+## Configuration
 
-### API Connection Errors
+### Supported Languages
 
-- Ensure the FastAPI server is running on port 8000
-- Check that `index.html` has the correct API URL (`http://localhost:8000`)
+Code files: `.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.java`, `.cpp`, `.c`, `.h`, `.go`, `.rs`, `.php`
 
-### Missing API Keys
+Markup: `.html`, `.css`, `.scss`, `.json`, `.yaml`, `.xml`
 
-- Verify your `.env` file exists and contains both `OPENAI_API_KEY` and `PINECONE_API_KEY`
-- Restart the server after adding/changing `.env` values
+Docs: `.md`, `.Rmd`, `.ipynb`
 
-### Tree-Sitter Parsing Issues
+### Excluded Directories
 
-- If Tree-Sitter parsers fail to load, the system will fall back to generic chunking
-- Install Tree-Sitter language packages: `pip install tree-sitter-python tree-sitter-javascript` etc.
+Automatically skipped: `.git`, `node_modules`, `dist`, `build`, `venv`, `.env`, `__pycache__`, `.vscode`, etc.
 
-### Pinecone Index Errors
+## Future Enhancements
 
-- Ensure your Pinecone API key has permission to create indexes
-- Check your Pinecone account limits
+- [ ] Streaming ingestion progress (WebSocket)
+- [ ] Support for private GitHub repositories (authentication)
+- [ ] Custom chunking strategies per language
+- [ ] Multi-turn conversation memory
+- [ ] Code execution environment for validation
+- [ ] Docker containerization for easy deployment
+- [ ] Rate limiting and user authentication
 
-## 📝 Notes
+## Notes
 
-- The first ingestion of a repository may take several minutes depending on repository size
-- Already indexed repositories are detected and skipped automatically
-- Each repository is stored in a separate Pinecone namespace (using `repo_id`)
+- First ingestion of a large repo may take 5-10 minutes
+- Already-indexed repositories are automatically detected and cached
+- Each repository gets its own Pinecone namespace
