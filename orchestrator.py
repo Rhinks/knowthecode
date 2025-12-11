@@ -13,7 +13,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 
-def repo_processor(repo_url:str)->str:
+def repo_processor(repo_url:str, progress_callback=None)->str:
     """    
     :param repo_url: repo_url entered by the user
     :type repo_url: str
@@ -22,65 +22,75 @@ def repo_processor(repo_url:str)->str:
     - returns repo_id: to identify this repo later 
     
     """
-    print("\n" + "="*60)
-    print("[STEP 0] Extracting repo name and checking if already indexed...")
-    print("="*60)
+    def emit(msg):
+        """Helper to send progress message"""
+        if progress_callback:
+            progress_callback(msg)
+        print(msg)
+    
+    emit("\n[STEP 0] Extracting repo name and checking if already indexed...")
     
     # 0. Extract repo_id and check if already indexed
     repo_id = repo_loader.get_repo_name_from_url(repo_url)
-    print(f"✓ Extracted repo_id: {repo_id}")
+    emit(f"✓ Extracted repo_id: {repo_id}")
     
     if embedder.namespace_exists("code-chunks", repo_id):
-        print(f"✓ Repo '{repo_id}' already indexed! Skipping processing.")
+        emit(f"✓ Repo '{repo_id}' already indexed! Ready for queries.")
         return repo_id
     
-    print(f"✓ Repo '{repo_id}' not found. Starting full pipeline...\n")
+    emit(f"✓ Repo not indexed. Starting full pipeline...\n")
     
-    # 1. clone the repo on my machine (for now, will later change to tmp for production) --> cloned_repos/repo_name
-    print("="*60)
-    print("[STEP 1] Cloning repository...")
-    print("="*60)
-    rep_dir = repo_loader.ingest_repo(repo_url) # will return repo_dir
-    print(f"✓ Repository cloned to: {rep_dir}\n")
+    # 1. Clone
+    emit("[STEP 1] Cloning repository...")
+    try:
+        rep_dir = repo_loader.ingest_repo(repo_url)
+        emit(f"✓ Repository cloned\n")
+    except Exception as e:
+        emit(f"✗ Clone failed: {e}")
+        return None
 
-    # 2. run file_reader to filter out files to process --> output.json
-    print("="*60)
-    print("[STEP 2] Reading and parsing repository files...")
-    print("="*60)
-    repo_data = file_reader.read_repo_files(rep_dir) # will return list[dict]
-    print(f"✓ Found {len(repo_data)} files to process")
-    file_reader.save_files_to_json(repo_data, "output.json")
-    print(f"✓ Saved to output.json\n")
+    # 2. Parse
+    emit("[STEP 2] Reading and parsing repository files...")
+    try:
+        repo_data = file_reader.read_repo_files(rep_dir)
+        emit(f"✓ Found {len(repo_data)} files")
+        emit(f"Saving files to output.json...")
+        file_reader.save_files_to_json(repo_data, "output.json")
+        emit(f"✓ Files saved\n")
+    except Exception as e:
+        emit(f"✗ Parse failed: {e}")
+        return None
 
-    # 3. using chunker.py create chunking via tree-sitter --> result.json
-    print("="*60)
-    print("[STEP 3] Chunking files...")
-    print("="*60)
-    chunks = chunker.chunk_and_save("output.json", "result.json")  # create result.json
-    print(f"✓ Created {len(chunks)} chunks\n")
+    # 3. Chunk
+    emit("[STEP 3] Chunking files with Tree-Sitter...")
+    try:
+        chunks = chunker.chunk_and_save("output.json", "result.json")
+        emit(f"✓ Created {len(chunks)} chunks\n")
+    except Exception as e:
+        emit(f"✗ Chunking failed: {e}")
+        return None
 
-    # 4. generate embbedding and indexing using embed_chunks.py (openai embeddings, pinecone for indexing) --> returns repo_id
-    print("="*60)
-    print("[STEP 4] Embedding chunks and indexing in Pinecone...")
-    print("="*60)
-    res_indexing = embedder.embed_chunks(chunks, index_name="code-chunks", repo_id=repo_id)
-    
-    if res_indexing:
-        print(f"✓ Embedded {res_indexing['num_embedded']} chunks")
-        print(f"✓ Used {res_indexing['total_tokens']} tokens")
-        print(f"✓ Index: {res_indexing['index_name']}")
-    else:
-        print("✗ Embedding failed!")
+    # 4. Embed
+    emit("[STEP 4] Embedding chunks with OpenAI...")
+    try:
+        res_indexing = embedder.embed_chunks(chunks, index_name="code-chunks", repo_id=repo_id)
+    except Exception as e:
+        emit(f"✗ Embedding failed: {e}")
         return None
     
-    print("\n" + "="*60)
-    print(f"✓ REPO PROCESSING COMPLETE for '{repo_id}'")
-    print("="*60 + "\n")
+    if res_indexing:
+        emit(f"✓ Embedded {res_indexing['num_embedded']} chunks")
+        emit(f"✓ Used {res_indexing['total_tokens']} tokens\n")
+    else:
+        emit("✗ Embedding failed!")
+        return None
+    
+    emit(f"✓ COMPLETE - Repo '{repo_id}' ready for queries")
     
     return repo_id
 
 
-def query_processor(query:str, repo_id:str, top_k:int=5):
+def query_processor(query:str, repo_id:str, top_k:int=5, progress_callback=None):
     """
     
     :param query: User's question
@@ -89,30 +99,31 @@ def query_processor(query:str, repo_id:str, top_k:int=5):
     :type repo_id: str
     :param top_k: number of chunks to retrieve (default: 5)
     :type top_k: int
+    :param progress_callback: optional callback to report progress
+    :type progress_callback: callable
 
     user query + repo_id to search --> retrieve chunks --> feed chunks + query to llm --> return answer text
 
     called multiple times 
 
     """
-    print("\n" + "="*60)
-    print("[STEP 1] Retrieving relevant chunks from Pinecone...")
-    print("="*60)
-    print(f"Query: '{query}'")
-    print(f"Repo ID: {repo_id}")
-    print(f"Top K: {top_k}\n")
+    def emit(msg):
+        """Helper to send progress message"""
+        if progress_callback:
+            progress_callback(msg)
+        print(msg)
+    
+    emit("\n[STEP 1] Retrieving relevant chunks from Pinecone...")
 
     chunks = embedder.retrieve_chunks(query, index_name="code-chunks", repo_id=repo_id, top_k=top_k)
     
     if not chunks:
-        print("✗ No chunks retrieved!")
+        emit("✗ No chunks retrieved!")
         return "I couldn't find relevant information in the repository."
     
-    print(f"✓ Retrieved {len(chunks)} chunks\n")
+    emit(f"✓ Retrieved {len(chunks)} chunks\n")
     
-    print("="*60)
-    print("[STEP 2] Feeding chunks to LLM (GPT-4o-mini)...")
-    print("="*60)
+    emit("[STEP 2] Feeding chunks to LLM (GPT-4o-mini)...")
     
     # Format chunks for LLM
     context = "\n\n---\n\n".join([
@@ -132,20 +143,17 @@ def query_processor(query:str, repo_id:str, top_k:int=5):
             ]
         )
         answer = response.choices[0].message.content
-        print(f"✓ LLM response generated\n")
+        emit(f"✓ LLM response generated\n")
     except Exception as e:
-        print(f"✗ LLM API call failed: {e}")
+        emit(f"✗ LLM API call failed: {e}")
         return None
 
-    print("="*60)
-    print("ANSWER:")
-    print("="*60)
-    print(answer)
-    print("="*60 + "\n")
+    emit("✓ COMPLETE - Answer ready")
 
     return answer
 
-query="what is this project about" #temporary
-repo_id = repo_processor("https://github.com/samarth-p/College-ERP.git")
 
-query_processor(query=query, repo_id=repo_id, top_k=5)
+if __name__ == "__main__":
+    query="what is this project about" #temporary
+    repo_id = repo_processor("https://github.com/samarth-p/College-ERP.git")
+    query_processor(query=query, repo_id=repo_id, top_k=5)

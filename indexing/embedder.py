@@ -156,10 +156,16 @@ def embed_chunks(chunks: list[dict], index_name: str = "code-chunks", repo_id: s
     
     print(f"[embed_chunks] Prepared {len(vectors_to_upsert)} vectors")
     
-    # Upsert to Pinecone
+    # Upsert to Pinecone in batches (avoid exceeding 2MB request limit)
     print(f"[embed_chunks] Upserting vectors to Pinecone (namespace: {repo_id})...")
+    batch_size = 25  # Conservative batch size to avoid 2MB limit
     try:
-        index.upsert(vectors=vectors_to_upsert, namespace=repo_id)
+        total_batches = (len(vectors_to_upsert) + batch_size - 1) // batch_size
+        for i in range(0, len(vectors_to_upsert), batch_size):
+            batch = vectors_to_upsert[i:i + batch_size]
+            batch_num = i // batch_size + 1
+            print(f"[embed_chunks] Upserting batch {batch_num}/{total_batches} ({len(batch)} vectors)...")
+            index.upsert(vectors=batch, namespace=repo_id)
         print(f"[embed_chunks] ✓ Upsert successful")
     except Exception as e:
         print(f"[ERROR] Upsert failed: {e}")
@@ -230,23 +236,29 @@ def retrieve_chunks(query: str, index_name: str = "code-chunks", repo_id: str = 
 def namespace_exists(index_name: str, repo_id: str) -> bool:
     """
     Check if a namespace (repo_id) already exists in the Pinecone index.
+    Uses a simple query to check if namespace has any vectors.
     
     Args:
         index_name: Pinecone index name
         repo_id: namespace to check
     
     Returns:
-        True if namespace exists, False otherwise
+        True if namespace exists and has vectors, False otherwise
     """
     try:
         index = pc.Index(index_name)
         stats = index.describe_index_stats()
         namespaces = stats.get('namespaces', {})
-        exists = repo_id in namespaces
-        print(f"[namespace_exists] Checking '{repo_id}' in index '{index_name}': {exists}")
-        return exists
+        
+        if repo_id in namespaces:
+            print(f"[namespace_exists] ✓ Namespace '{repo_id}' found in stats")
+            return True
+        
+        print(f"[namespace_exists] ✗ Namespace '{repo_id}' NOT found in stats")
+        return False
     except Exception as e:
         print(f"[ERROR] Failed to check namespace: {e}")
+        print(f"[DEBUG] This might mean the namespace truly doesn't exist yet")
         return False
 
 
